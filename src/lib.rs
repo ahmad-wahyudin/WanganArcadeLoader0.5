@@ -63,6 +63,7 @@ pub struct KeyConfig {
 	test: KeyBindings,
 	service: KeyBindings,
 	card_insert: KeyBindings,
+	coin: KeyBindings,
 
 	gear_next: KeyBindings,
 	gear_previous: KeyBindings,
@@ -522,6 +523,7 @@ unsafe fn init() {
 		test: Vec<String>,
 		service: Vec<String>,
 		card_insert: Vec<String>,
+		coin: Vec<String>,
 
 		gear_next: Vec<String>,
 		gear_previous: Vec<String>,
@@ -551,6 +553,7 @@ unsafe fn init() {
 		test: parse_keybinding(keyconfig.test),
 		service: parse_keybinding(keyconfig.service),
 		card_insert: parse_keybinding(keyconfig.card_insert),
+		coin: parse_keybinding(keyconfig.coin),
 
 		gear_next: parse_keybinding(keyconfig.gear_next),
 		gear_previous: parse_keybinding(keyconfig.gear_previous),

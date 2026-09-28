@@ -3,6 +3,7 @@ use crate::*;
 pub static mut SDL_STATE: Option<poll::PollState> = None;
 
 static mut GEAR_INDEX: u8 = 0;
+static mut COIN_COUNT_P1: u16 = 0;
 
 const GEAR_LEFT: u32 = 1;
 const GEAR_RIGHT: u32 = 2;
@@ -114,6 +115,14 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 
 	// Safely write to n2jvio only if the symbol pointer is valid
 	if !n2jvio.is_null() {
+		if sdl.is_tapped(&keyconfig.coin) {
+        	COIN_COUNT_P1 = COIN_COUNT_P1.wrapping_add(1);
+        	(n2jvio as *mut u8)
+            	.byte_add(0x128)
+            	.cast::<u16>()
+            	.write(COIN_COUNT_P1);
+    	}
+
 		n2jvio.byte_add(0x1A8).write(
 			(i16::MAX as f32 - (wheel_left * i16::MAX as f32) + (wheel_right * i16::MAX as f32))
 				as u16,

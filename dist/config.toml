@@ -9,5 +9,5 @@ dongle = "285013501138"
 # 1% deadzone
 deadzone = 0.01
 
-width = 640
-height = 480
+width = 960
+height = 720
