@@ -161,6 +161,11 @@ unsafe fn handle_inputs_inner(data: *mut u32) {
 		}
 		COIN_PREV_DOWN = coin_down;
 
+		let service_down = sdl.is_down(&keyconfig.service) > 0.0;
+		n2jvio
+    		.byte_add(0x178)
+    		.write(if service_down { 1 } else { 0 });
+
 		n2jvio.byte_add(0x1A8).write(
 			(i16::MAX as f32 - (wheel_left * i16::MAX as f32) + (wheel_right * i16::MAX as f32))
 				as u16,
