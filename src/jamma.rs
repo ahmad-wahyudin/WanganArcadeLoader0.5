@@ -22,14 +22,14 @@ fn set_gear_bits(index: u8) -> u32 {
 }
 
 unsafe extern "C" fn handle_inputs(data: *mut u32) {
-	if adm::WINDOW_HANDLE.is_none() {
+	if data.is_null() {
 		return;
-	};
-	if SDL_STATE.is_none() {
-		SDL_STATE =
-			Some(poll::PollState::new(adm::WINDOW_HANDLE.unwrap(), CONFIG.deadzone).unwrap());
 	}
-	let sdl = SDL_STATE.as_mut().unwrap();
+	let sdl = match unsafe { SDL_STATE.as_mut() } {
+		Some(state) => state,
+		None => return,
+	};
+
 	let keyconfig = KEYCONFIG.as_ref().unwrap();
 	sdl.update();
 
@@ -109,27 +109,41 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 	let n2jvio = hook::get_symbol("n2jvio") as *mut u16;
 	let wheel_left = sdl.is_down(&keyconfig.wheel_left);
 	let wheel_right = sdl.is_down(&keyconfig.wheel_right);
-	n2jvio.byte_add(0x1A8).write(
-		(i16::MAX as f32 - (wheel_left * i16::MAX as f32) + (wheel_right * i16::MAX as f32)) as u16,
-	);
+	let gas = sdl.is_down(&keyconfig.gas);
+	let brake = sdl.is_down(&keyconfig.brake);
+
+	// Safely write to n2jvio only if the symbol pointer is valid
+	if !n2jvio.is_null() {
+		n2jvio.byte_add(0x1A8).write(
+			(i16::MAX as f32 - (wheel_left * i16::MAX as f32) + (wheel_right * i16::MAX as f32))
+				as u16,
+		);
+		n2jvio.byte_add(0x1AA).write((gas * i16::MAX as f32) as u16);
+		n2jvio
+			.byte_add(0x1AC)
+			.write((brake * i16::MAX as f32) as u16);
+	}
+
+	// Always safe to write to data if it passed the initial data.is_null() check
 	data.byte_add(0x20).write(u32::from_le_bytes(
 		(0.0 - wheel_left + wheel_right).to_le_bytes(),
 	));
-
-	let gas = sdl.is_down(&keyconfig.gas);
-	n2jvio.byte_add(0x1AA).write((gas * i16::MAX as f32) as u16);
 	data.byte_add(0x30)
 		.write(u32::from_le_bytes(gas.to_le_bytes()));
-
-	let brake = sdl.is_down(&keyconfig.brake);
-	n2jvio
-		.byte_add(0x1AC)
-		.write((brake * i16::MAX as f32) as u16);
 	data.byte_add(0x34)
 		.write(u32::from_le_bytes(brake.to_le_bytes()));
 }
 
 pub unsafe fn init() {
+	// Pre-initialize SDL_STATE on the main thread if window handle is ready
+	if let Some(handle) = adm::WINDOW_HANDLE {
+		if SDL_STATE.is_none() {
+			if let Ok(state) = poll::PollState::new(handle, CONFIG.deadzone) {
+				SDL_STATE = Some(state);
+			}
+		}
+	}
+
 	hook::hook_symbol("_ZN10clSystemN212initSystemN2Ev", adachi as *const ());
 	hook::hook_symbol("_ZN18clInputDeviceJamma8checkUseEv", adachi as *const ());
 	hook::hook_symbol(

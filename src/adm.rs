@@ -65,6 +65,14 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 		.unwrap()
 	});
 	WINDOW_HANDLE = Some(window.get_x11_window());
+
+	// Initialize SDL state safely on the main thread
+	if CONFIG.input_emu {
+		if let Ok(state) = poll::PollState::new(std::ptr::null(), CONFIG.deadzone) {
+			jamma::SDL_STATE = Some(state);
+		}
+	}
+
 	window.make_current();
 	window.set_resizable(true);
 	glfw.set_swap_interval(SwapInterval::Sync(1));

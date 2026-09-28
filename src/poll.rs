@@ -1,12 +1,10 @@
 use device_query::DeviceQuery;
-use device_query::Keycode;
 use phf::*;
 use sdl2::controller::Button;
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode as SdlKeycode;
 use sdl2::*;
 use std::collections::*;
-use std::ffi::CString;
-use std::mem::MaybeUninit;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Axis {
@@ -34,20 +32,18 @@ pub struct PollState {
 	controllers: BTreeMap<u32, controller::GameController>,
 	window: *mut sdl2::sys::SDL_Window,
 	deadzone: f32,
-	keyboard_state: Vec<Keycode>,
-	last_keyboard_state: Vec<Keycode>,
+	keyboard_state: HashSet<SdlKeycode>,
+	last_keyboard_state: HashSet<SdlKeycode>,
 	button_state: Vec<Button>,
 	last_button_state: Vec<Button>,
 	axis_state: BTreeMap<Axis, f32>,
 	last_axis_state: BTreeMap<Axis, f32>,
-	#[cfg(target_os = "linux")]
-	display: *mut x11::xlib::Display,
 	window_handle: *const libc::c_void,
 }
 
 #[derive(Clone)]
 pub enum KeyBinding {
-	Keycode(Keycode),
+	Keycode(SdlKeycode),
 	Button(Button),
 	Axis(Axis),
 }
@@ -57,64 +53,64 @@ pub struct KeyBindings {
 }
 
 const MAPPINGS: Map<&str, KeyBinding> = phf_map! {
-	"F1" => KeyBinding::Keycode(Keycode::F1),
-	"F2" => KeyBinding::Keycode(Keycode::F2),
-	"F3" => KeyBinding::Keycode(Keycode::F3),
-	"F4" => KeyBinding::Keycode(Keycode::F4),
-	"F5" => KeyBinding::Keycode(Keycode::F5),
-	"F6" => KeyBinding::Keycode(Keycode::F6),
-	"F7" => KeyBinding::Keycode(Keycode::F7),
-	"F8" => KeyBinding::Keycode(Keycode::F8),
-	"F9" => KeyBinding::Keycode(Keycode::F9),
-	"F10" => KeyBinding::Keycode(Keycode::F10),
-	"F11" => KeyBinding::Keycode(Keycode::F11),
-	"F12" => KeyBinding::Keycode(Keycode::F12),
-	"NUM0" => KeyBinding::Keycode(Keycode::Key0),
-	"NUM1" => KeyBinding::Keycode(Keycode::Key1),
-	"NUM2" => KeyBinding::Keycode(Keycode::Key2),
-	"NUM3" => KeyBinding::Keycode(Keycode::Key3),
-	"NUM4" => KeyBinding::Keycode(Keycode::Key4),
-	"NUM5" => KeyBinding::Keycode(Keycode::Key5),
-	"NUM6" => KeyBinding::Keycode(Keycode::Key6),
-	"NUM7" => KeyBinding::Keycode(Keycode::Key7),
-	"NUM8" => KeyBinding::Keycode(Keycode::Key8),
-	"NUM9" => KeyBinding::Keycode(Keycode::Key9),
-	"UPARROW" => KeyBinding::Keycode(Keycode::Up),
-	"LEFTARROW" => KeyBinding::Keycode(Keycode::Left),
-	"DOWNARROW" => KeyBinding::Keycode(Keycode::Down),
-	"RIGHTARROW" => KeyBinding::Keycode(Keycode::Right),
-	"ENTER" => KeyBinding::Keycode(Keycode::Enter),
-	"SPACE" => KeyBinding::Keycode(Keycode::Space),
-	"CONTROL" => KeyBinding::Keycode(Keycode::LControl),
-	"SHIFT" => KeyBinding::Keycode(Keycode::LShift),
-	"TAB" => KeyBinding::Keycode(Keycode::Tab),
-	"ESCAPE" => KeyBinding::Keycode(Keycode::Escape),
-	"A" => KeyBinding::Keycode(Keycode::A),
-	"B" => KeyBinding::Keycode(Keycode::B),
-	"C" => KeyBinding::Keycode(Keycode::C),
-	"D" => KeyBinding::Keycode(Keycode::D),
-	"E" => KeyBinding::Keycode(Keycode::E),
-	"F" => KeyBinding::Keycode(Keycode::F),
-	"G" => KeyBinding::Keycode(Keycode::G),
-	"H" => KeyBinding::Keycode(Keycode::H),
-	"I" => KeyBinding::Keycode(Keycode::I),
-	"J" => KeyBinding::Keycode(Keycode::J),
-	"K" => KeyBinding::Keycode(Keycode::K),
-	"L" => KeyBinding::Keycode(Keycode::L),
-	"M" => KeyBinding::Keycode(Keycode::M),
-	"N" => KeyBinding::Keycode(Keycode::N),
-	"O" => KeyBinding::Keycode(Keycode::O),
-	"P" => KeyBinding::Keycode(Keycode::P),
-	"Q" => KeyBinding::Keycode(Keycode::Q),
-	"R" => KeyBinding::Keycode(Keycode::R),
-	"S" => KeyBinding::Keycode(Keycode::S),
-	"T" => KeyBinding::Keycode(Keycode::T),
-	"U" => KeyBinding::Keycode(Keycode::U),
-	"V" => KeyBinding::Keycode(Keycode::V),
-	"W" => KeyBinding::Keycode(Keycode::W),
-	"X" => KeyBinding::Keycode(Keycode::X),
-	"Y" => KeyBinding::Keycode(Keycode::Y),
-	"Z" => KeyBinding::Keycode(Keycode::Z),
+	"F1" => KeyBinding::Keycode(SdlKeycode::F1),
+	"F2" => KeyBinding::Keycode(SdlKeycode::F2),
+	"F3" => KeyBinding::Keycode(SdlKeycode::F3),
+	"F4" => KeyBinding::Keycode(SdlKeycode::F4),
+	"F5" => KeyBinding::Keycode(SdlKeycode::F5),
+	"F6" => KeyBinding::Keycode(SdlKeycode::F6),
+	"F7" => KeyBinding::Keycode(SdlKeycode::F7),
+	"F8" => KeyBinding::Keycode(SdlKeycode::F8),
+	"F9" => KeyBinding::Keycode(SdlKeycode::F9),
+	"F10" => KeyBinding::Keycode(SdlKeycode::F10),
+	"F11" => KeyBinding::Keycode(SdlKeycode::F11),
+	"F12" => KeyBinding::Keycode(SdlKeycode::F12),
+	"NUM0" => KeyBinding::Keycode(SdlKeycode::Num0),
+	"NUM1" => KeyBinding::Keycode(SdlKeycode::Num1),
+	"NUM2" => KeyBinding::Keycode(SdlKeycode::Num2),
+	"NUM3" => KeyBinding::Keycode(SdlKeycode::Num3),
+	"NUM4" => KeyBinding::Keycode(SdlKeycode::Num4),
+	"NUM5" => KeyBinding::Keycode(SdlKeycode::Num5),
+	"NUM6" => KeyBinding::Keycode(SdlKeycode::Num6),
+	"NUM7" => KeyBinding::Keycode(SdlKeycode::Num7),
+	"NUM8" => KeyBinding::Keycode(SdlKeycode::Num8),
+	"NUM9" => KeyBinding::Keycode(SdlKeycode::Num9),
+	"UPARROW" => KeyBinding::Keycode(SdlKeycode::Up),
+	"LEFTARROW" => KeyBinding::Keycode(SdlKeycode::Left),
+	"DOWNARROW" => KeyBinding::Keycode(SdlKeycode::Down),
+	"RIGHTARROW" => KeyBinding::Keycode(SdlKeycode::Right),
+	"ENTER" => KeyBinding::Keycode(SdlKeycode::Return),
+	"SPACE" => KeyBinding::Keycode(SdlKeycode::Space),
+	"CONTROL" => KeyBinding::Keycode(SdlKeycode::LCtrl),
+	"SHIFT" => KeyBinding::Keycode(SdlKeycode::LShift),
+	"TAB" => KeyBinding::Keycode(SdlKeycode::Tab),
+	"ESCAPE" => KeyBinding::Keycode(SdlKeycode::Escape),
+	"A" => KeyBinding::Keycode(SdlKeycode::A),
+	"B" => KeyBinding::Keycode(SdlKeycode::B),
+	"C" => KeyBinding::Keycode(SdlKeycode::C),
+	"D" => KeyBinding::Keycode(SdlKeycode::D),
+	"E" => KeyBinding::Keycode(SdlKeycode::E),
+	"F" => KeyBinding::Keycode(SdlKeycode::F),
+	"G" => KeyBinding::Keycode(SdlKeycode::G),
+	"H" => KeyBinding::Keycode(SdlKeycode::H),
+	"I" => KeyBinding::Keycode(SdlKeycode::I),
+	"J" => KeyBinding::Keycode(SdlKeycode::J),
+	"K" => KeyBinding::Keycode(SdlKeycode::K),
+	"L" => KeyBinding::Keycode(SdlKeycode::L),
+	"M" => KeyBinding::Keycode(SdlKeycode::M),
+	"N" => KeyBinding::Keycode(SdlKeycode::N),
+	"O" => KeyBinding::Keycode(SdlKeycode::O),
+	"P" => KeyBinding::Keycode(SdlKeycode::P),
+	"Q" => KeyBinding::Keycode(SdlKeycode::Q),
+	"R" => KeyBinding::Keycode(SdlKeycode::R),
+	"S" => KeyBinding::Keycode(SdlKeycode::S),
+	"T" => KeyBinding::Keycode(SdlKeycode::T),
+	"U" => KeyBinding::Keycode(SdlKeycode::U),
+	"V" => KeyBinding::Keycode(SdlKeycode::V),
+	"W" => KeyBinding::Keycode(SdlKeycode::W),
+	"X" => KeyBinding::Keycode(SdlKeycode::X),
+	"Y" => KeyBinding::Keycode(SdlKeycode::Y),
+	"Z" => KeyBinding::Keycode(SdlKeycode::Z),
 	"SDL_A" => KeyBinding::Button(Button::A),
 	"SDL_B" => KeyBinding::Button(Button::B),
 	"SDL_X" => KeyBinding::Button(Button::X),
@@ -170,31 +166,13 @@ impl PollState {
 		let gamepad = sdl.game_controller()?;
 		let events = sdl.event_pump()?;
 
-		gamepad
-			.load_mappings("gamecontrollerdb.txt")
-			.map_err(|_| "Failed to parse gamecontrollerdb.txt")?;
+		let _ = gamepad.load_mappings("gamecontrollerdb.txt");
 		let mut controllers = BTreeMap::new();
 		for i in 0..gamepad.num_joysticks()? {
-			if let Ok(controller) = gamepad.open(i).map_err(|_| {
-				format!(
-					"Failed to open {}",
-					gamepad.name_for_index(i).map_or(
-						String::from("Failed to get controller information"),
-						|name| name
-					)
-				)
-			}) {
+			if let Ok(controller) = gamepad.open(i) {
 				controllers.insert(i, controller);
 			}
 		}
-		let window = unsafe { sdl2::sys::SDL_CreateWindowFrom(handle) };
-
-		#[cfg(target_os = "linux")]
-		let display = {
-			let display = std::env::var("DISPLAY").expect("Not connected to X display?");
-			let display = CString::new(display).unwrap();
-			unsafe { x11::xlib::XOpenDisplay(display.as_ptr()) }
-		};
 
 		Ok(Self {
 			sdl,
@@ -203,84 +181,114 @@ impl PollState {
 			joystick,
 			events,
 			controllers,
-			window,
+			window: std::ptr::null_mut(),
 			deadzone: axis_deadzone,
-			keyboard_state: Vec::with_capacity(255),
-			last_keyboard_state: Vec::with_capacity(255),
+			keyboard_state: HashSet::new(),
+			last_keyboard_state: HashSet::new(),
 			button_state: Vec::with_capacity(32),
 			last_button_state: Vec::with_capacity(32),
 			axis_state: BTreeMap::new(),
 			last_axis_state: BTreeMap::new(),
-			#[cfg(target_os = "linux")]
-			display,
 			window_handle: handle,
 		})
 	}
 
 	pub fn update(&mut self) {
-		self.last_keyboard_state.clear();
+		self.last_keyboard_state = self.keyboard_state.clone();
 		self.last_button_state.clear();
 		self.last_axis_state.clear();
 
-		self.last_keyboard_state.extend(&self.keyboard_state);
 		self.last_button_state.extend(&self.button_state);
 		self.last_axis_state.extend(&self.axis_state);
 
-		#[cfg(target_os = "linux")]
-		{
-			let mut window: MaybeUninit<x11::xlib::Window> = MaybeUninit::uninit();
-			let mut state = MaybeUninit::uninit();
-			unsafe {
-				x11::xlib::XGetInputFocus(self.display, window.as_mut_ptr(), state.as_mut_ptr())
+		// Directly query global keyboard state using device_query (bypasses SDL window focus restrictions under GLFW)
+		let device_keys = device_query::DeviceState::new().get_keys();
+		self.keyboard_state.clear();
+		for k in device_keys {
+			// Map device_query Keycode enum names to sdl2 Keycode equivalents
+			let keycode_opt = match k {
+				device_query::Keycode::F1 => Some(SdlKeycode::F1),
+				device_query::Keycode::F2 => Some(SdlKeycode::F2),
+				device_query::Keycode::F3 => Some(SdlKeycode::F3),
+				device_query::Keycode::F4 => Some(SdlKeycode::F4),
+				device_query::Keycode::F5 => Some(SdlKeycode::F5),
+				device_query::Keycode::F6 => Some(SdlKeycode::F6),
+				device_query::Keycode::F7 => Some(SdlKeycode::F7),
+				device_query::Keycode::F8 => Some(SdlKeycode::F8),
+				device_query::Keycode::F9 => Some(SdlKeycode::F9),
+				device_query::Keycode::F10 => Some(SdlKeycode::F10),
+				device_query::Keycode::F11 => Some(SdlKeycode::F11),
+				device_query::Keycode::F12 => Some(SdlKeycode::F12),
+				device_query::Keycode::Key0 => Some(SdlKeycode::Num0),
+				device_query::Keycode::Key1 => Some(SdlKeycode::Num1),
+				device_query::Keycode::Key2 => Some(SdlKeycode::Num2),
+				device_query::Keycode::Key3 => Some(SdlKeycode::Num3),
+				device_query::Keycode::Key4 => Some(SdlKeycode::Num4),
+				device_query::Keycode::Key5 => Some(SdlKeycode::Num5),
+				device_query::Keycode::Key6 => Some(SdlKeycode::Num6),
+				device_query::Keycode::Key7 => Some(SdlKeycode::Num7),
+				device_query::Keycode::Key8 => Some(SdlKeycode::Num8),
+				device_query::Keycode::Key9 => Some(SdlKeycode::Num9),
+				device_query::Keycode::A => Some(SdlKeycode::A),
+				device_query::Keycode::B => Some(SdlKeycode::B),
+				device_query::Keycode::C => Some(SdlKeycode::C),
+				device_query::Keycode::D => Some(SdlKeycode::D),
+				device_query::Keycode::E => Some(SdlKeycode::E),
+				device_query::Keycode::F => Some(SdlKeycode::F),
+				device_query::Keycode::G => Some(SdlKeycode::G),
+				device_query::Keycode::H => Some(SdlKeycode::H),
+				device_query::Keycode::I => Some(SdlKeycode::I),
+				device_query::Keycode::J => Some(SdlKeycode::J),
+				device_query::Keycode::K => Some(SdlKeycode::K),
+				device_query::Keycode::L => Some(SdlKeycode::L),
+				device_query::Keycode::M => Some(SdlKeycode::M),
+				device_query::Keycode::N => Some(SdlKeycode::N),
+				device_query::Keycode::O => Some(SdlKeycode::O),
+				device_query::Keycode::P => Some(SdlKeycode::P),
+				device_query::Keycode::Q => Some(SdlKeycode::Q),
+				device_query::Keycode::R => Some(SdlKeycode::R),
+				device_query::Keycode::S => Some(SdlKeycode::S),
+				device_query::Keycode::T => Some(SdlKeycode::T),
+				device_query::Keycode::U => Some(SdlKeycode::U),
+				device_query::Keycode::V => Some(SdlKeycode::V),
+				device_query::Keycode::W => Some(SdlKeycode::W),
+				device_query::Keycode::X => Some(SdlKeycode::X),
+				device_query::Keycode::Y => Some(SdlKeycode::Y),
+				device_query::Keycode::Z => Some(SdlKeycode::Z),
+				device_query::Keycode::Up => Some(SdlKeycode::Up),
+				device_query::Keycode::Down => Some(SdlKeycode::Down),
+				device_query::Keycode::Left => Some(SdlKeycode::Left),
+				device_query::Keycode::Right => Some(SdlKeycode::Right),
+				device_query::Keycode::Space => Some(SdlKeycode::Space),
+				device_query::Keycode::Enter => Some(SdlKeycode::Return),
+				device_query::Keycode::Escape => Some(SdlKeycode::Escape),
+				device_query::Keycode::Tab => Some(SdlKeycode::Tab),
+				_ => None,
 			};
-			if unsafe { window.assume_init() } == self.window_handle as x11::xlib::Window {
-				self.keyboard_state = device_query::DeviceState::new().get_keys();
-			} else {
-				self.keyboard_state = Vec::new();
+			if let Some(keycode) = keycode_opt {
+				self.keyboard_state.insert(keycode);
 			}
-		}
-		#[cfg(not(target_os = "linux"))]
-		{
-			self.keyboard_state = device_query::DeviceState::new().get_keys();
 		}
 
 		for event in self.events.poll_iter() {
 			match event {
-				Event::ControllerDeviceAdded {
-					timestamp: _,
-					which,
-				} => {
-					let controller = self.gamepad.open(which).unwrap();
-					self.controllers.insert(which, controller);
+				Event::ControllerDeviceAdded { which, .. } => {
+					if let Ok(controller) = self.gamepad.open(which) {
+						self.controllers.insert(which, controller);
+					}
 				}
-				Event::ControllerDeviceRemoved {
-					timestamp: _,
-					which,
-				} => {
+				Event::ControllerDeviceRemoved { which, .. } => {
 					if let Some(controller) = self.controllers.remove(&which) {
 						drop(controller);
 					}
 				}
-				Event::ControllerButtonDown {
-					timestamp: _,
-					which: _,
-					button,
-				} => {
+				Event::ControllerButtonDown { button, .. } => {
 					self.button_state.push(button);
 				}
-				Event::ControllerButtonUp {
-					timestamp: _,
-					which: _,
-					button,
-				} => {
+				Event::ControllerButtonUp { button, .. } => {
 					self.button_state.retain(|b| b != &button);
 				}
-				Event::ControllerAxisMotion {
-					timestamp: _,
-					which: _,
-					axis,
-					value,
-				} => {
+				Event::ControllerAxisMotion { axis, value, .. } => {
 					let value = value as f32 / i16::MAX as f32;
 					use Axis::*;
 					let (axis_positive, axis_negative) = match axis {
@@ -302,38 +310,27 @@ impl PollState {
 						self.axis_state.insert(axis_negative, 0.0);
 					}
 				}
-				Event::KeyDown {
-					timestamp: _,
-					window_id: _,
-					keycode: _,
-					scancode: _,
-					keymod: _,
-					repeat: _,
-				} => {
-					// Currently this is broken and waiting on sdl 3.20, see #5142 for updates
-					// for now im using device_query
-				}
 				_ => {}
 			}
 		}
 	}
 
-	fn keycode_is_down(&self, keycode: &Keycode) -> bool {
+	fn keycode_is_down(&self, keycode: &SdlKeycode) -> bool {
 		self.keyboard_state.contains(keycode)
 	}
-	fn keycode_is_up(&self, keycode: &Keycode) -> bool {
+	fn keycode_is_up(&self, keycode: &SdlKeycode) -> bool {
 		!self.keyboard_state.contains(keycode)
 	}
-	fn keycode_was_down(&self, keycode: &Keycode) -> bool {
+	fn keycode_was_down(&self, keycode: &SdlKeycode) -> bool {
 		self.last_keyboard_state.contains(keycode)
 	}
-	fn keycode_was_up(&self, keycode: &Keycode) -> bool {
+	fn keycode_was_up(&self, keycode: &SdlKeycode) -> bool {
 		!self.last_keyboard_state.contains(keycode)
 	}
-	fn keycode_is_tapped(&self, keycode: &Keycode) -> bool {
+	fn keycode_is_tapped(&self, keycode: &SdlKeycode) -> bool {
 		self.keycode_is_down(keycode) && self.keycode_was_up(keycode)
 	}
-	fn keycode_is_released(&self, keycode: &Keycode) -> bool {
+	fn keycode_is_released(&self, keycode: &SdlKeycode) -> bool {
 		self.keycode_is_up(keycode) && self.keycode_was_down(keycode)
 	}
 

@@ -8,12 +8,12 @@ use std::str::FromStr;
 pub mod adm;
 pub mod al;
 pub mod card;
+pub mod card_redir;
 pub mod hook;
 pub mod jamma;
 pub mod opengl;
 pub mod poll;
 pub mod res;
-pub mod card_redir;
 
 #[derive(serde::Deserialize)]
 pub struct FileRedirect {
@@ -107,6 +107,11 @@ unsafe extern "C" fn sigaction() -> c_int {
 unsafe extern "C" fn system(command: *const c_char) -> c_int {
 	let cstr = CStr::from_ptr(command);
 	let str = cstr.to_str().unwrap();
+
+	if str.contains("date") || str.contains("hwclock") {
+		println!("Intercepted system clock command: {}", str);
+		return 0;
+	}
 
 	if !CONFIG.block_sudo || str.starts_with("find") {
 		let command = str.replace("/tmp/", "./tmp/");
@@ -330,8 +335,8 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 	if let Some(local_ip) = &CONFIG.local_ip {
 		let local_ip = std::net::Ipv4Addr::from_str(local_ip).unwrap();
 		let ip = i32::from_be_bytes(local_ip.octets());
-                let local_subnet = std::net::Ipv4Addr::from_str("255.255.255.0").unwrap();
-                let subnetmask = i32::from_be_bytes(local_subnet.octets());
+		let local_subnet = std::net::Ipv4Addr::from_str("255.255.255.0").unwrap();
+		let subnetmask = i32::from_be_bytes(local_subnet.octets());
 		let net = clnet.byte_offset(0x24).read();
 		let net = if net.is_null() {
 			clnet.byte_offset(0x1C).read()
@@ -339,7 +344,7 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 			net
 		};
 		net.byte_offset(0x04).write(ip);
-                net.byte_offset(0x08).write(subnetmask);
+		net.byte_offset(0x08).write(subnetmask);
 		ip
 	} else {
 		let local_ip = local_ip_address::local_ip().unwrap();
@@ -347,8 +352,8 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 			std::net::IpAddr::V4(addr) => addr,
 			_ => unreachable!(),
 		};
-                let local_subnet = std::net::Ipv4Addr::from_str("255.255.255.0").unwrap();
-                let subnetmask = i32::from_be_bytes(local_subnet.octets());
+		let local_subnet = std::net::Ipv4Addr::from_str("255.255.255.0").unwrap();
+		let subnetmask = i32::from_be_bytes(local_subnet.octets());
 		let ip = i32::from_be_bytes(local_ip.octets());
 		let net = clnet.byte_offset(0x24).read();
 		let net = if net.is_null() {
@@ -358,7 +363,7 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 		};
 		net.byte_offset(0x04).write(ip);
 		net.byte_offset(0x04).write(ip);
-                net.byte_offset(0x08).write(subnetmask);
+		net.byte_offset(0x08).write(subnetmask);
 		ip
 	}
 }
@@ -606,11 +611,11 @@ unsafe fn init() {
 	if CONFIG.card_emu {
 		card::init();
 	}
-	if CONFIG.redir_card && CONFIG.card_device.is_empty(){
+	if CONFIG.redir_card && CONFIG.card_device.is_empty() {
 		println!("Path for card redirect is not specified!, please check config.toml");
 		card_redir::init();
 	}
-	if CONFIG.redir_card && !CONFIG.card_device.is_empty(){
+	if CONFIG.redir_card && !CONFIG.card_device.is_empty() {
 		card_redir::init();
 	}
 	if CONFIG.redir_card && CONFIG.card_emu {

@@ -9,15 +9,14 @@ crate-type = ["cdylib"]
 [dependencies]
 ctor = "0.2"
 device_query = "2.0"
-#glfw = { version = "0.63.0", features = ["wayland"] }
-glfw = { version = "0.55" }   # drop the wayland feature
+glfw = "0.55"
 libc = "0.2"
 phf = { version = "0.11", features = ["macros"] }
 region = "3.0"
-sdl2 = { version = "0.36" }
+sdl2 = { version = "0.36", features = ["bundled", "static-link"] }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
-retour = { path = "deps/retour-rs" }
+retour = { git = "https://github.com/BroGamer4256/retour-rs.git" }
 x11 = "2.21"
 local-ip-address = "0.6"
 gl = "0.14"
