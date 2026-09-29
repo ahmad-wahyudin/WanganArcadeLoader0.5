@@ -4,21 +4,6 @@ pub static mut SDL_STATE: Option<poll::PollState> = None;
 
 static mut GEAR_INDEX: u8 = 0;
 
-static mut COIN_PREV_DOWN: bool = false;
-static mut COIN_FALL_MS: u128 = 0;
-static mut LAST_COIN_MS: u128 = 0;
-static mut COIN_PULSE_ARM_CLEAR: bool = false;
-
-const MIN_PULSE_MS: u128 = 10;
-const COIN_GAP_MS: u128 = 120;
-
-fn now_ms() -> u128 {
-	std::time::SystemTime::now()
-		.duration_since(std::time::UNIX_EPOCH)
-		.unwrap_or_default() // never panics: falls back to 0 duration instead
-		.as_millis()
-}
-
 const GEAR_LEFT: u32 = 1;
 const GEAR_RIGHT: u32 = 2;
 const GEAR_UP: u32 = 4;
@@ -139,27 +124,9 @@ unsafe fn handle_inputs_inner(data: *mut u32) {
 	// Safely write to n2jvio only if the symbol pointer is valid
 	if !n2jvio.is_null() {
 		let coin_down = sdl.is_down(&keyconfig.coin) > 0.0;
-		let now = now_ms();
-
-		// If a pulse is currently armed from a previous call, clear it now,
-		if COIN_PULSE_ARM_CLEAR {
-			n2jvio.byte_add(0x128).write(0);
-			COIN_PULSE_ARM_CLEAR = false;
-		}
-
-		if coin_down && !COIN_PREV_DOWN {
-			COIN_FALL_MS = now;
-		} else if !coin_down && COIN_PREV_DOWN {
-			let width = now.saturating_sub(COIN_FALL_MS);
-			let gap = now.saturating_sub(LAST_COIN_MS);
-
-			if width >= MIN_PULSE_MS && (LAST_COIN_MS == 0 || gap >= COIN_GAP_MS) {
-				LAST_COIN_MS = now;
-				n2jvio.byte_add(0x128).write(1);
-				COIN_PULSE_ARM_CLEAR = true; // clear it on the next call, not this one
-			}
-		}
-		COIN_PREV_DOWN = coin_down;
+    	n2jvio
+        	.byte_add(0x128)
+        	.write(if coin_down { 1 } else { 0 });
 
 		let service_down = sdl.is_down(&keyconfig.service) > 0.0;
 		n2jvio
