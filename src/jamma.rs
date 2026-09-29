@@ -4,6 +4,8 @@ pub static mut SDL_STATE: Option<poll::PollState> = None;
 
 static mut GEAR_INDEX: u8 = 0;
 
+static mut ORIGINAL_IS_DEBUG: Option<unsafe extern "C" fn(*const ()) -> u8> = None;
+
 const GEAR_LEFT: u32 = 1;
 const GEAR_RIGHT: u32 = 2;
 const GEAR_UP: u32 = 4;
@@ -21,8 +23,12 @@ fn set_gear_bits(index: u8) -> u32 {
 	}
 }
 
-unsafe extern "C" fn is_debug_stub(_this: *const ()) -> u8 {
-	0
+unsafe extern "C" fn is_debug_stub(this: *const ()) -> u8 {
+	if CONFIG.debug_menu {
+		ORIGINAL_IS_DEBUG.unwrap()(this)
+	} else {
+		0
+	}
 }
 
 unsafe extern "C" fn handle_inputs(data: *mut u32) {
@@ -159,7 +165,10 @@ unsafe fn handle_inputs_inner(data: *mut u32) {
 }
 
 pub unsafe fn init() {
-	hook::hook_symbol("_ZNK6clMain7isDebugEv", is_debug_stub as *const ());
+	ORIGINAL_IS_DEBUG = Some(std::mem::transmute(hook::hook_symbol(
+		"_ZNK6clMain7isDebugEv",
+		is_debug_stub as *const (),
+	)));
 	// Pre-initialize SDL_STATE on the main thread if window handle is ready
 	if let Some(handle) = adm::WINDOW_HANDLE {
 		if SDL_STATE.is_none() {

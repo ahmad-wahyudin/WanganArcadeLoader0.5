@@ -37,6 +37,8 @@ pub struct Config {
 	width: u32,
 	height: u32,
 
+	debug_menu: bool,
+
 	file_redirect: Option<Vec<FileRedirect>>,
 }
 
@@ -55,6 +57,7 @@ const fn default_config() -> Config {
 		deadzone: 0.01,
 		width: 640,
 		height: 480,
+		debug_menu: false,
 		file_redirect: None,
 	}
 }
