@@ -21,6 +21,10 @@ fn set_gear_bits(index: u8) -> u32 {
 	}
 }
 
+unsafe extern "C" fn is_debug_stub(_this: *const ()) -> u8 {
+	0
+}
+
 unsafe extern "C" fn handle_inputs(data: *mut u32) {
 	let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
 		handle_inputs_inner(data);
@@ -34,6 +38,7 @@ unsafe fn handle_inputs_inner(data: *mut u32) {
 	if data.is_null() {
 		return;
 	}
+
 	let sdl = match unsafe { SDL_STATE.as_mut() } {
 		Some(state) => state,
 		None => return,
@@ -154,6 +159,7 @@ unsafe fn handle_inputs_inner(data: *mut u32) {
 }
 
 pub unsafe fn init() {
+	hook::hook_symbol("_ZNK6clMain7isDebugEv", is_debug_stub as *const ());
 	// Pre-initialize SDL_STATE on the main thread if window handle is ready
 	if let Some(handle) = adm::WINDOW_HANDLE {
 		if SDL_STATE.is_none() {
