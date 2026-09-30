@@ -201,73 +201,78 @@ impl PollState {
 		self.last_button_state.extend(&self.button_state);
 		self.last_axis_state.extend(&self.axis_state);
 
-		// Directly query global keyboard state using device_query (bypasses SDL window focus restrictions under GLFW)
-		let device_keys = device_query::DeviceState::new().get_keys();
-		self.keyboard_state.clear();
-		for k in device_keys {
-			// Map device_query Keycode enum names to sdl2 Keycode equivalents
-			let keycode_opt = match k {
-				device_query::Keycode::F1 => Some(SdlKeycode::F1),
-				device_query::Keycode::F2 => Some(SdlKeycode::F2),
-				device_query::Keycode::F3 => Some(SdlKeycode::F3),
-				device_query::Keycode::F4 => Some(SdlKeycode::F4),
-				device_query::Keycode::F5 => Some(SdlKeycode::F5),
-				device_query::Keycode::F6 => Some(SdlKeycode::F6),
-				device_query::Keycode::F7 => Some(SdlKeycode::F7),
-				device_query::Keycode::F8 => Some(SdlKeycode::F8),
-				device_query::Keycode::F9 => Some(SdlKeycode::F9),
-				device_query::Keycode::F10 => Some(SdlKeycode::F10),
-				device_query::Keycode::F11 => Some(SdlKeycode::F11),
-				device_query::Keycode::F12 => Some(SdlKeycode::F12),
-				device_query::Keycode::Key0 => Some(SdlKeycode::Num0),
-				device_query::Keycode::Key1 => Some(SdlKeycode::Num1),
-				device_query::Keycode::Key2 => Some(SdlKeycode::Num2),
-				device_query::Keycode::Key3 => Some(SdlKeycode::Num3),
-				device_query::Keycode::Key4 => Some(SdlKeycode::Num4),
-				device_query::Keycode::Key5 => Some(SdlKeycode::Num5),
-				device_query::Keycode::Key6 => Some(SdlKeycode::Num6),
-				device_query::Keycode::Key7 => Some(SdlKeycode::Num7),
-				device_query::Keycode::Key8 => Some(SdlKeycode::Num8),
-				device_query::Keycode::Key9 => Some(SdlKeycode::Num9),
-				device_query::Keycode::A => Some(SdlKeycode::A),
-				device_query::Keycode::B => Some(SdlKeycode::B),
-				device_query::Keycode::C => Some(SdlKeycode::C),
-				device_query::Keycode::D => Some(SdlKeycode::D),
-				device_query::Keycode::E => Some(SdlKeycode::E),
-				device_query::Keycode::F => Some(SdlKeycode::F),
-				device_query::Keycode::G => Some(SdlKeycode::G),
-				device_query::Keycode::H => Some(SdlKeycode::H),
-				device_query::Keycode::I => Some(SdlKeycode::I),
-				device_query::Keycode::J => Some(SdlKeycode::J),
-				device_query::Keycode::K => Some(SdlKeycode::K),
-				device_query::Keycode::L => Some(SdlKeycode::L),
-				device_query::Keycode::M => Some(SdlKeycode::M),
-				device_query::Keycode::N => Some(SdlKeycode::N),
-				device_query::Keycode::O => Some(SdlKeycode::O),
-				device_query::Keycode::P => Some(SdlKeycode::P),
-				device_query::Keycode::Q => Some(SdlKeycode::Q),
-				device_query::Keycode::R => Some(SdlKeycode::R),
-				device_query::Keycode::S => Some(SdlKeycode::S),
-				device_query::Keycode::T => Some(SdlKeycode::T),
-				device_query::Keycode::U => Some(SdlKeycode::U),
-				device_query::Keycode::V => Some(SdlKeycode::V),
-				device_query::Keycode::W => Some(SdlKeycode::W),
-				device_query::Keycode::X => Some(SdlKeycode::X),
-				device_query::Keycode::Y => Some(SdlKeycode::Y),
-				device_query::Keycode::Z => Some(SdlKeycode::Z),
-				device_query::Keycode::Up => Some(SdlKeycode::Up),
-				device_query::Keycode::Down => Some(SdlKeycode::Down),
-				device_query::Keycode::Left => Some(SdlKeycode::Left),
-				device_query::Keycode::Right => Some(SdlKeycode::Right),
-				device_query::Keycode::Space => Some(SdlKeycode::Space),
-				device_query::Keycode::Enter => Some(SdlKeycode::Return),
-				device_query::Keycode::Escape => Some(SdlKeycode::Escape),
-				device_query::Keycode::Tab => Some(SdlKeycode::Tab),
-				_ => None,
-			};
-			if let Some(keycode) = keycode_opt {
-				self.keyboard_state.insert(keycode);
+		// Only poll keyboard if the game window is currently in focus
+		if unsafe { crate::adm::WINDOW_FOCUSED } {
+			let device_keys = device_query::DeviceState::new().get_keys();
+			self.keyboard_state.clear();
+			for k in device_keys {
+				let keycode_opt = match k {
+					device_query::Keycode::F1 => Some(SdlKeycode::F1),
+					device_query::Keycode::F2 => Some(SdlKeycode::F2),
+					device_query::Keycode::F3 => Some(SdlKeycode::F3),
+					device_query::Keycode::F4 => Some(SdlKeycode::F4),
+					device_query::Keycode::F5 => Some(SdlKeycode::F5),
+					device_query::Keycode::F6 => Some(SdlKeycode::F6),
+					device_query::Keycode::F7 => Some(SdlKeycode::F7),
+					device_query::Keycode::F8 => Some(SdlKeycode::F8),
+					device_query::Keycode::F9 => Some(SdlKeycode::F9),
+					device_query::Keycode::F10 => Some(SdlKeycode::F10),
+					device_query::Keycode::F11 => Some(SdlKeycode::F11),
+					device_query::Keycode::F12 => Some(SdlKeycode::F12),
+					device_query::Keycode::Key0 => Some(SdlKeycode::Num0),
+					device_query::Keycode::Key1 => Some(SdlKeycode::Num1),
+					device_query::Keycode::Key2 => Some(SdlKeycode::Num2),
+					device_query::Keycode::Key3 => Some(SdlKeycode::Num3),
+					device_query::Keycode::Key4 => Some(SdlKeycode::Num4),
+					device_query::Keycode::Key5 => Some(SdlKeycode::Num5),
+					device_query::Keycode::Key6 => Some(SdlKeycode::Num6),
+					device_query::Keycode::Key7 => Some(SdlKeycode::Num7),
+					device_query::Keycode::Key8 => Some(SdlKeycode::Num8),
+					device_query::Keycode::Key9 => Some(SdlKeycode::Num9),
+					device_query::Keycode::Up => Some(SdlKeycode::Up),
+					device_query::Keycode::Left => Some(SdlKeycode::Left),
+					device_query::Keycode::Down => Some(SdlKeycode::Down),
+					device_query::Keycode::Right => Some(SdlKeycode::Right),
+					device_query::Keycode::Enter => Some(SdlKeycode::Return),
+					device_query::Keycode::Space => Some(SdlKeycode::Space),
+					device_query::Keycode::LControl => Some(SdlKeycode::LCtrl),
+					device_query::Keycode::LShift => Some(SdlKeycode::LShift),
+					device_query::Keycode::Escape => Some(SdlKeycode::Escape),
+					device_query::Keycode::Tab => Some(SdlKeycode::Tab),
+					device_query::Keycode::A => Some(SdlKeycode::A),
+					device_query::Keycode::B => Some(SdlKeycode::B),
+					device_query::Keycode::C => Some(SdlKeycode::C),
+					device_query::Keycode::D => Some(SdlKeycode::D),
+					device_query::Keycode::E => Some(SdlKeycode::E),
+					device_query::Keycode::F => Some(SdlKeycode::F),
+					device_query::Keycode::G => Some(SdlKeycode::G),
+					device_query::Keycode::H => Some(SdlKeycode::H),
+					device_query::Keycode::I => Some(SdlKeycode::I),
+					device_query::Keycode::J => Some(SdlKeycode::J),
+					device_query::Keycode::K => Some(SdlKeycode::K),
+					device_query::Keycode::L => Some(SdlKeycode::L),
+					device_query::Keycode::M => Some(SdlKeycode::M),
+					device_query::Keycode::N => Some(SdlKeycode::N),
+					device_query::Keycode::O => Some(SdlKeycode::O),
+					device_query::Keycode::P => Some(SdlKeycode::P),
+					device_query::Keycode::Q => Some(SdlKeycode::Q),
+					device_query::Keycode::R => Some(SdlKeycode::R),
+					device_query::Keycode::S => Some(SdlKeycode::S),
+					device_query::Keycode::T => Some(SdlKeycode::T),
+					device_query::Keycode::U => Some(SdlKeycode::U),
+					device_query::Keycode::V => Some(SdlKeycode::V),
+					device_query::Keycode::W => Some(SdlKeycode::W),
+					device_query::Keycode::X => Some(SdlKeycode::X),
+					device_query::Keycode::Y => Some(SdlKeycode::Y),
+					device_query::Keycode::Z => Some(SdlKeycode::Z),
+					_ => None,
+				};
+				if let Some(keycode) = keycode_opt {
+					self.keyboard_state.insert(keycode);
+				}
 			}
+		} else {
+			self.keyboard_state.clear();
 		}
 
 		for event in self.events.poll_iter() {

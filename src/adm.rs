@@ -10,6 +10,7 @@ extern "C" fn adm_version() -> *const c_char {
 }
 
 pub static mut WINDOW_HANDLE: Option<*mut c_void> = None;
+pub static mut WINDOW_FOCUSED: bool = true;
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -31,6 +32,7 @@ struct AdmWindow {
 	ident: [u8; 4], // WNDW
 	glfw: Glfw,
 	window: PWindow,
+	events: GlfwReceiver<(f64, WindowEvent)>,
 	fbo: u32,
 }
 
@@ -50,7 +52,7 @@ extern "C" fn adm_fb_config() -> *const u8 {
 unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 	let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
 	glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
-	let (mut window, _) = glfw.with_primary_monitor(|glfw, m| {
+	let (mut window, events) = glfw.with_primary_monitor(|glfw, m| {
 		if CONFIG.fullscreen {
 			if let Some(monitor) = m {
 				if let Some(mode) = monitor.get_video_mode() {
@@ -85,6 +87,7 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 
 	window.make_current();
 	window.set_resizable(true);
+	window.set_focus_polling(true);
 	glfw.set_swap_interval(SwapInterval::Sync(1));
 
 	opengl::load_gl_funcs(&glfw);
@@ -124,6 +127,7 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
 		glfw,
 		window,
+		events,
 		fbo,
 	};
 
@@ -132,6 +136,12 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 
 unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let window = window_ptr.as_mut().unwrap();
+
+	for (_, event) in glfw::flush_messages(&window.events) {
+		if let WindowEvent::Focus(focused) = event {
+			WINDOW_FOCUSED = focused;
+		}
+	}
 
 	let graphics =
 		hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u16;
