@@ -51,19 +51,29 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 	let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
 	glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
 	let (mut window, _) = glfw.with_primary_monitor(|glfw, m| {
-		let window_mode = if CONFIG.fullscreen && m.is_some() {
-			WindowMode::FullScreen(m.unwrap())
-		} else {
-			WindowMode::Windowed
-		};
+		if CONFIG.fullscreen {
+			if let Some(monitor) = m {
+				if let Some(mode) = monitor.get_video_mode() {
+					return glfw
+						.create_window(
+							mode.width,
+							mode.height,
+							"WanganArcadeLoader",
+							WindowMode::FullScreen(monitor),
+						)
+						.unwrap();
+				}
+			}
+		}
 		glfw.create_window(
 			CONFIG.width,
 			CONFIG.height,
 			"WanganArcadeLoader",
-			window_mode,
+			WindowMode::Windowed,
 		)
 		.unwrap()
 	});
+
 	WINDOW_HANDLE = Some(window.get_x11_window());
 
 	// Initialize SDL state safely on the main thread
