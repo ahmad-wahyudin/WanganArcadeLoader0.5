@@ -1,4 +1,4 @@
-fullscreen = true
+fullscreen = false
 input_emu = true
 card_emu = true
 redir_card = false
@@ -10,5 +10,5 @@ debug_menu = false
 # 1% deadzone
 deadzone = 0.01
 
-width = 1920
-height = 1080
+width = 640
+height = 480
